@@ -35,7 +35,7 @@ class TextDetection{
         .toBuffer();
 
       const [position_result] = await this.client.textDetection(sample_buffer);
-      var position_allResult = parse_paragraph(position_result.fullTextAnnotation, template);
+      var position_allResult = parse_paragraph(position_result.fullTextAnnotation);
 
       var base_position = position_allResult.find(item => item.str == template.base_range.value);
       if (!base_position) {
@@ -63,12 +63,12 @@ class TextDetection{
 //      fs.writeFile("./result.png", masked_buffer);
 
       const [result] = await this.client.textDetection(masked_buffer);
-      var allResult = parse_paragraph(result.fullTextAnnotation, template);
+      var allResult = parse_paragraph(result.fullTextAnnotation);
 
       allResult.forEach(item => {
+        var center_x = Math.round((item.min_x + item.max_x) / 2);
+        var center_y = Math.round((item.min_y + item.max_y) / 2);
         var found = template.ranges.find(range => {
-          var center_x = Math.round((item.min_x + item.max_x) / 2);
-          var center_y = Math.round((item.min_y + item.max_y) / 2);
           return (center_x >= range.x && center_x <= (range.x + range.width)) &&
             (center_y >= (range.y + offset) && center_y <= (range.y + offset + range.height))
         });
@@ -94,7 +94,7 @@ function make_mask(ranges, offset, template) {
   return Buffer.from(svg);
 }
 
-function parse_paragraph(annotation, template) {
+function parse_paragraph(annotation) {
   if (!annotation || !annotation.pages || annotation.pages.length < 1)
     return [];
 
@@ -103,7 +103,7 @@ function parse_paragraph(annotation, template) {
   for (var block of blocks) {
     for (var para of block.paragraphs) {
       var str = "";
-      var min_x = template.image_width, max_x = -1, min_y = template.image_height, max_y = -1;
+      var min_x = Number.MAX_SAFE_INTEGER, max_x = -1, min_y = Number.MAX_SAFE_INTEGER, max_y = -1;
       for (var word of para.words) {
         for (var symbol of word.symbols) {
           str += symbol.text;
